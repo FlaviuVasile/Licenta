@@ -1,0 +1,17 @@
+package com.example.turismAPI.model;
+
+public class TurismResponse {
+    private String message;
+
+    public TurismResponse(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+}
