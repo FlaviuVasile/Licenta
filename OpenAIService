@@ -1,0 +1,37 @@
+package com.example.turismAPI.service;
+
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class OpenAIService {
+
+    private final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+    private final String OPENAI_API_KEY = "PUNE_CHEIA_TA_AICI"; // Înlocuiește cu cheia API reală
+
+    public String generateGPTResponse(String prompt) {
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + OPENAI_API_KEY);
+        headers.set("Content-Type", "application/json");
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", "gpt-4");
+        requestBody.put("messages", new Object[]{
+                Map.of("role", "system", "content", "Ești un asistent inteligent."),
+                Map.of("role", "user", "content", prompt)
+        });
+        requestBody.put("max_tokens", 100);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+        ResponseEntity<String> response = restTemplate.exchange(OPENAI_API_URL, HttpMethod.POST, request, String.class);
+
+        return response.getBody();
+    }
+}
