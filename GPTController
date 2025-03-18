@@ -1,0 +1,21 @@
+package com.example.turismAPI.controller;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import com.example.turismAPI.service.OpenAIService;
+
+@RestController
+public class GPTController {
+
+    private final OpenAIService openAIService;
+
+    public GPTController(OpenAIService openAIService) {
+        this.openAIService = openAIService;
+    }
+
+    @GetMapping("/api/gpt")
+    public String getGPTResponse(@RequestParam String prompt) {
+        return openAIService.generateGPTResponse(prompt);
+    }
+}
