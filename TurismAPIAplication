@@ -1,0 +1,186 @@
+package com.example.turismAPI;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.*;
+
+@SpringBootApplication
+@RestController
+@RequestMapping("/api")
+public class TurismApiApplication {
+
+	private static String lastCounty = "unknown"; // Ține minte județul ales de utilizator
+
+	public static void main(String[] args) {
+		SpringApplication.run(TurismApiApplication.class, args);
+	}
+
+	// 🔹 Încarcă datele dintr-un fișier JSON
+	private static <T> T loadJsonData(String fileName, TypeReference<T> typeReference) {
+		String filePath = "src/main/resources/data/" + fileName + ".json";
+		System.out.println("📂 Încerc să încarc fișierul de la: " + filePath);
+
+		File file = new File(filePath);
+		if (!file.exists()) {
+			System.out.println("❌ Fișierul JSON NU EXISTĂ la: " + file.getAbsolutePath());
+			return null;
+		}
+
+		try (InputStream inputStream = new FileInputStream(file)) {
+			ObjectMapper objectMapper = new ObjectMapper();
+			return objectMapper.readValue(inputStream, typeReference);
+		} catch (IOException e) {
+			System.out.println("❌ Eroare la citirea fișierului JSON: " + e.getMessage());
+			return null;
+		}
+	}
+
+	// 🔹 Endpoint pentru întrebări în limbaj natural
+	@GetMapping("/ask")
+	public Map<String, Object> askNaturalQuestion(@RequestParam String question) {
+		Map<String, Object> response = new HashMap<>();
+		String lowerQuestion = question.toLowerCase();
+
+		// Detectăm tipul întrebării
+		String queryType = detectQueryType(lowerQuestion);
+		if (queryType == null) {
+			response.put("error", "Întrebare necunoscută. Folosește cuvinte ca 'cazare', 'trasee', 'restaurante', 'transport'.");
+			return response;
+		}
+
+		// Extragem județul
+		String county = extractCounty(lowerQuestion);
+		if ("unknown".equals(county)) {
+			response.put("error", "Nu am putut identifica județul.");
+			return response;
+		}
+
+		// Salvăm județul pentru întrebările următoare
+		lastCounty = county;
+
+		// Răspundem în funcție de tipul întrebării
+		switch (queryType) {
+			case "accommodation":
+				response.put("accommodation", getAccommodation(county));
+				break;
+			case "trails":
+				response.put("trails", getTrails(county));
+				break;
+			case "restaurants":
+				response.put("restaurants", getRestaurants(county));
+				break;
+			case "transport":
+				response.put("transport", getTransport(county));
+				break;
+			case "city_info":
+				response.put("city_info", getCityInfo(county));
+				break;
+		}
+
+		return response;
+	}
+
+	// 🔹 Detectează județul menționat în întrebare
+	private String extractCounty(String question) {
+		List<Map<String, Object>> citiesData = loadJsonData("cities", new TypeReference<List<Map<String, Object>>>() {});
+		if (citiesData == null) return lastCounty; // Dacă nu găsim nimic, returnăm județul salvat anterior
+
+		for (Map<String, Object> city : citiesData) {
+			String cityName = city.get("name").toString().toLowerCase();
+			String countyName = city.get("county").toString();
+			if (question.contains(cityName)) {
+				System.out.println("🏙 Oraș detectat: " + city.get("name") + " (Județ: " + countyName + ")");
+				return countyName;
+			}
+		}
+
+		return lastCounty;
+	}
+
+	// 🔹 Detectează tipul întrebării
+	private String detectQueryType(String question) {
+		if (question.contains("cazare") || question.contains("hotel")) return "accommodation";
+		if (question.contains("traseu") || question.contains("trasee")) return "trails";
+		if (question.contains("restaurant")) return "restaurants";
+		if (question.contains("transport")) return "transport";
+		if (question.contains("informații despre") || question.contains("despre")) return "city_info";
+		return null;
+	}
+
+	// 🔹 Obține cazare pentru un județ (CORECTAT ✅)
+	private List<Map<String, Object>> getAccommodation(String county) {
+		List<Map<String, Object>> accommodations = loadJsonData("accommodation", new TypeReference<List<Map<String, Object>>>() {});
+
+		if (accommodations == null) {
+			System.out.println("❌ Eroare: Nu s-au putut încărca datele despre cazare.");
+			return new ArrayList<>();
+		}
+
+		List<Map<String, Object>> filteredList = new ArrayList<>();
+		for (Map<String, Object> hotel : accommodations) {
+			if (hotel.get("county") != null && hotel.get("county").equals(county)) {
+				filteredList.add(hotel);
+			}
+		}
+
+		return filteredList;
+	}
+
+	// 🔹 Obține restaurante pentru un județ (CORECTAT ✅)
+	private List<Map<String, Object>> getRestaurants(String county) {
+		Map<String, Object> restaurantsWrapper = loadJsonData("restaurants", new TypeReference<Map<String, Object>>() {});
+
+		if (restaurantsWrapper == null || !restaurantsWrapper.containsKey("restaurants")) {
+			System.out.println("❌ Eroare la încărcarea `restaurants.json`: nu conține cheia 'restaurants'.");
+			return new ArrayList<>();
+		}
+
+		Map<String, List<Map<String, Object>>> restaurantsData = (Map<String, List<Map<String, Object>>>) restaurantsWrapper.get("restaurants");
+		return restaurantsData.getOrDefault(county, new ArrayList<>());
+	}
+
+	// 🔹 Obține transport pentru un județ
+	private List<Map<String, Object>> getTransport(String county) {
+		List<Map<String, Object>> transport = loadJsonData("transport", new TypeReference<List<Map<String, Object>>>() {});
+		return filterByCounty(transport, county);
+	}
+
+	private List<Map<String, Object>> filterByCounty(List<Map<String, Object>> transport, String county) {
+        return transport;
+    }
+
+	// 🔹 Obține trasee pentru un județ (CORECTAT ✅)
+	private List<Map<String, Object>> getTrails(String county) {
+		Map<String, Object> trailsWrapper = loadJsonData("trails", new TypeReference<Map<String, Object>>() {});
+
+		if (trailsWrapper == null || !trailsWrapper.containsKey("trails")) {
+			System.out.println("❌ Eroare la încărcarea `trails.json`: nu conține cheia 'trails'.");
+			return new ArrayList<>();
+		}
+
+		Map<String, List<Map<String, Object>>> trailsData = (Map<String, List<Map<String, Object>>>) trailsWrapper.get("trails");
+		return trailsData.getOrDefault(county, new ArrayList<>());
+	}
+
+	// 🔹 Obține informații despre un județ
+	private Map<String, Object> getCityInfo(String county) {
+		List<Map<String, Object>> citiesData = loadJsonData("cities", new TypeReference<List<Map<String, Object>>>() {});
+		if (citiesData == null) return Map.of("error", "Nu s-au găsit informații.");
+
+		for (Map<String, Object> city : citiesData) {
+			if (city.get("county").equals(county)) {
+				return city;
+			}
+		}
+
+		return Map.of("error", "Nu s-au găsit informații pentru județ.");
+	}
+}
