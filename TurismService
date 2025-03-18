@@ -1,0 +1,13 @@
+package com.example.turismAPI.service;
+
+import com.example.turismAPI.model.TurismRequest;
+import com.example.turismAPI.model.TurismResponse;
+import org.springframework.stereotype.Service;
+
+@Service
+public class TurismService {
+
+    public TurismResponse getTurismInfo(TurismRequest request) {
+        return new TurismResponse("Informații despre: " + request.getLocation());
+    }
+}
