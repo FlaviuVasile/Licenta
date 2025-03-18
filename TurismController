@@ -1,0 +1,22 @@
+package com.example.turismAPI.controller;
+
+import com.example.turismAPI.model.TurismRequest;
+import com.example.turismAPI.model.TurismResponse;
+import com.example.turismAPI.service.TurismService;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/turism")
+public class TurismController {
+
+    private final TurismService turismService;
+
+    public TurismController(TurismService turismService) {
+        this.turismService = turismService;
+    }
+
+    @PostMapping
+    public TurismResponse getTurismInfo(@RequestBody TurismRequest request) {
+        return turismService.getTurismInfo(request);
+    }
+}
